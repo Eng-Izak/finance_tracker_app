@@ -25,14 +25,16 @@ class AccountListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isCreditor = account.type == AccountType.creditor;
+    final isActuallyCreditor = account.type == AccountType.creditor
+        ? account.balance >= 0
+        : account.balance < 0;
     final formatter = NumberFormat('#,##0.##');
 
     final typeColor =
-        isCreditor ? AppColors.creditor : AppColors.debtor;
+        isActuallyCreditor ? AppColors.creditor : AppColors.debtor;
     final typeBgColor =
-        isCreditor ? AppColors.creditorSurface : AppColors.debtorSurface;
-    final arrowIcon = isCreditor
+        isActuallyCreditor ? AppColors.creditorSurface : AppColors.debtorSurface;
+    final arrowIcon = isActuallyCreditor
         ? Icons.arrow_upward_rounded
         : Icons.arrow_downward_rounded;
 

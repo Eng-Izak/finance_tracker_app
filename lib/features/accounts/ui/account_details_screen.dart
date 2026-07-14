@@ -448,8 +448,8 @@ class _TransactionItem extends StatelessWidget {
     final isIncome = tx.type == TransactionType.income;
     final color = isIncome ? AppColors.creditor : AppColors.debtor;
     final icon = isIncome
-        ? Icons.arrow_downward_rounded
-        : Icons.arrow_upward_rounded;
+        ? Icons.arrow_upward_rounded
+        : Icons.arrow_downward_rounded;
 
     return Dismissible(
       key: Key(tx.id),

@@ -39,8 +39,14 @@ class HomeContent extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Text(l10n.accounts, style: AppTextStyles.titleLarge),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    l10n.accounts,
+                    style: AppTextStyles.titleLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 NewTransactionButton(accounts: state.accounts),
                 const SizedBox(width: 8),
                 const NewAccountButton(),
