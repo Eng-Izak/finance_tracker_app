@@ -73,7 +73,9 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
       );
     }
 
-    final isCreditor = account.type == AccountType.creditor;
+    final isActuallyCreditor = account.type == AccountType.creditor
+        ? account.balance >= 0
+        : account.balance < 0;
     final formatter = NumberFormat('#,##0.##');
     final dateFormat = DateFormat('yyyy-MM-dd');
 
@@ -196,7 +198,7 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: isCreditor
+                gradient: isActuallyCreditor
                     ? AppColors.creditorGradient
                     : AppColors.debtorGradient,
                 borderRadius: BorderRadius.circular(20),
@@ -205,7 +207,7 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isCreditor ? l10n.creditor : l10n.debtor,
+                    isActuallyCreditor ? l10n.creditor : l10n.debtor,
                     style: AppTextStyles.onDarkBody,
                   ),
                   const SizedBox(height: 8),

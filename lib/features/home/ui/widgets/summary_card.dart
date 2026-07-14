@@ -26,15 +26,34 @@ class SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final formatter = NumberFormat('#,##0.##');
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
+    final LinearGradient cardGradient;
+    final String balanceLabel;
+    final Color shadowColor;
+
+    if (netBalance > 0) {
+      cardGradient = AppColors.creditorGradient;
+      balanceLabel = isAr ? 'الرصيد له (دائن)' : 'Balance (Creditor)';
+      shadowColor = AppColors.creditor;
+    } else if (netBalance < 0) {
+      cardGradient = AppColors.debtorGradient;
+      balanceLabel = isAr ? 'الرصيد عليه (مدين)' : 'Balance (Debtor)';
+      shadowColor = AppColors.debtor;
+    } else {
+      cardGradient = AppColors.summaryGradient;
+      balanceLabel = l10n.balance;
+      shadowColor = AppColors.primary;
+    }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
-        gradient: AppColors.summaryGradient,
+        gradient: cardGradient,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
+            color: shadowColor.withValues(alpha: 0.25),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -92,7 +111,7 @@ class SummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  l10n.balance,
+                  balanceLabel,
                   style: AppTextStyles.onDarkBody,
                 ),
                 Column(
