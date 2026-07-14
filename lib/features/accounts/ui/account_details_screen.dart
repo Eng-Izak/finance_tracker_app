@@ -9,6 +9,7 @@ import '../../../core/shared/enums/transaction_type.dart';
 import '../../../core/shared/models/account_model.dart';
 import '../../../core/shared/models/transaction_model.dart';
 import '../../../core/shared/repos/accounts_repo.dart';
+import '../../../core/services/export_service.dart';
 import '../../../core/routing/routes.dart';
 import '../../../core/theming/app_colors.dart';
 import '../../../core/theming/app_text_styles.dart';
@@ -16,6 +17,7 @@ import '../../transactions/logic/transactions_cubit.dart';
 import '../../transactions/logic/transactions_state.dart';
 import '../logic/accounts_cubit.dart';
 import '../logic/accounts_state.dart';
+import '../../home/ui/widgets/financial_reports_dialog.dart';
 
 class AccountDetailsScreen extends StatelessWidget {
   final String accountId;
@@ -49,6 +51,16 @@ class _AccountDetailsView extends StatefulWidget {
 }
 
 class _AccountDetailsViewState extends State<_AccountDetailsView> {
+  final _searchController = TextEditingController();
+  bool _isSearching = false;
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -64,6 +76,27 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
     final isCreditor = account.type == AccountType.creditor;
     final formatter = NumberFormat('#,##0.##');
     final dateFormat = DateFormat('yyyy-MM-dd');
+
+    final transactionsState = context.watch<TransactionsCubit>().state;
+    List<TransactionModel> transactions = [];
+    if (transactionsState is TransactionsLoaded) {
+      transactions = transactionsState.transactions;
+    }
+
+    final filteredTransactions = _searchQuery.trim().isEmpty
+        ? transactions
+        : transactions.where((tx) {
+            final query = _searchQuery.trim().toLowerCase();
+            final notes = tx.notes?.toLowerCase() ?? '';
+            final amount = tx.amount.toString();
+            final isIncome = tx.type == TransactionType.income;
+            final typeStr = isIncome
+                ? (l10n.income.toLowerCase())
+                : (l10n.expense.toLowerCase());
+            return notes.contains(query) ||
+                amount.contains(query) ||
+                typeStr.contains(query);
+          }).toList();
 
     return BlocListener<AccountsCubit, AccountsState>(
       listener: (context, state) {
@@ -87,19 +120,74 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_rounded),
-            onPressed: () => context.pop(),
-          ),
-          title: Text(account.name, overflow: TextOverflow.ellipsis),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.more_vert_rounded),
-              onPressed: () => _showOptions(context, l10n, account),
-            ),
-          ],
-        ),
+        appBar: _isSearching
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                  },
+                ),
+                title: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: '${l10n.search}...',
+                    border: InputBorder.none,
+                    fillColor: Colors.transparent,
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    icon: Image.asset(
+                      'assets/icons/export_icon.png',
+                      width: 24,
+                      height: 24,
+                    ),
+                    onPressed: () => FinancialReportsDialog.show(
+                      context,
+                      preselectedAccountId: account.id,
+                      preselectedSearchQuery: _searchQuery,
+                    ),
+                  ),
+                ],
+              )
+            : AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_rounded),
+                  onPressed: () => Future.microtask(() {
+                    if (context.mounted) context.pop();
+                  }),
+                ),
+                title: Text(account.name, overflow: TextOverflow.ellipsis),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.search_rounded),
+                    onPressed: () => setState(() => _isSearching = true),
+                  ),
+                  IconButton(
+                    icon: Image.asset(
+                      'assets/icons/export_icon.png',
+                      width: 24,
+                      height: 24,
+                    ),
+                    onPressed: () => FinancialReportsDialog.show(
+                      context,
+                      preselectedAccountId: account.id,
+                      preselectedSearchQuery: _searchQuery,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert_rounded),
+                    onPressed: () => _showOptions(context, l10n, account, filteredTransactions),
+                  ),
+                ],
+              ),
         body: Column(
           children: [
             // ─── Balance Header ─────────────────────────────────
@@ -152,7 +240,7 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
                   }
 
                   if (state is TransactionsLoaded) {
-                    if (state.transactions.isEmpty) {
+                    if (filteredTransactions.isEmpty) {
                       return _buildEmpty(l10n);
                     }
 
@@ -161,9 +249,9 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
                           context.read<TransactionsCubit>().loadTransactions(widget.accountId),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: state.transactions.length,
+                        itemCount: filteredTransactions.length,
                         itemBuilder: (ctx, i) {
-                          final tx = state.transactions[i];
+                          final tx = filteredTransactions[i];
                           return _TransactionItem(
                             tx: tx,
                             formatter: formatter,
@@ -230,7 +318,11 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
   }
 
   void _showOptions(
-      BuildContext context, AppLocalizations l10n, AccountModel account) {
+      BuildContext context,
+      AppLocalizations l10n,
+      AccountModel account,
+      List<TransactionModel> transactions,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -254,6 +346,33 @@ class _AccountDetailsViewState extends State<_AccountDetailsView> {
                 title: Text(account.notes!),
               ),
             ],
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded, color: AppColors.primary),
+              title: Text(l10n.exportPdf),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await sl<ExportService>().exportToPdf(
+                  accounts: [account],
+                  transactions: transactions,
+                  creditorTotal: account.type == AccountType.creditor ? account.balance : 0,
+                  debtorTotal: account.type == AccountType.debtor ? account.balance : 0,
+                  balance: account.balance,
+                  currency: account.currency,
+                );
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.table_chart_rounded, color: AppColors.primary),
+              title: Text(l10n.exportCsv),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await sl<ExportService>().exportToCsv(
+                  accounts: [account],
+                  transactions: transactions,
+                );
+              },
+            ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.edit_rounded, color: AppColors.primary),

@@ -4,6 +4,7 @@ import 'package:finance_tracker_app_001/features/home/logic/home_state.dart';
 import 'package:finance_tracker_app_001/features/home/ui/widgets/account_list_item.dart';
 import 'package:finance_tracker_app_001/features/home/ui/widgets/home_empty_view.dart';
 import 'package:finance_tracker_app_001/features/home/ui/widgets/new_account_button.dart';
+import 'package:finance_tracker_app_001/features/home/ui/widgets/new_transaction_button.dart';
 import 'package:finance_tracker_app_001/features/home/ui/widgets/summary_card.dart';
 import 'package:finance_tracker_app_001/l10n/app_localizations.dart';
 import 'package:finance_tracker_app_001/core/theming/app_colors.dart';
@@ -40,6 +41,8 @@ class HomeContent extends StatelessWidget {
               children: [
                 Text(l10n.accounts, style: AppTextStyles.titleLarge),
                 const Spacer(),
+                NewTransactionButton(accounts: state.accounts),
+                const SizedBox(width: 8),
                 const NewAccountButton(),
               ],
             ),
@@ -60,6 +63,11 @@ class HomeContent extends StatelessWidget {
                     if (context.mounted) context.read<HomeCubit>().refresh();
                   }),
                   onDelete: () => _showDeleteConfirm(context, l10n, account.id),
+                  onEdit: () => context
+                      .push(AppRoutes.addAccount, extra: account)
+                      .then((_) {
+                    if (context.mounted) context.read<HomeCubit>().refresh();
+                  }),
                 );
               },
               childCount: state.accounts.length,

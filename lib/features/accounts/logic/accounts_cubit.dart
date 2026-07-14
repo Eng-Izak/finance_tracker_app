@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/shared/enums/account_type.dart';
+import '../../../core/shared/enums/transaction_type.dart';
 import '../../../core/shared/repos/accounts_repo.dart';
 import '../../../core/shared/repos/transactions_repo.dart';
 import '../../../features/auth/data/auth_repository.dart';
@@ -48,6 +49,7 @@ class AccountsCubit extends Cubit<AccountsState> {
     required String name,
     String? phone,
     required AccountType type,
+    required double openingBalance,
     required String currency,
     String? notes,
   }) async {
@@ -58,11 +60,25 @@ class AccountsCubit extends Cubit<AccountsState> {
         emit(const AccountsError('Account not found'));
         return;
       }
+
+      // Calculate new balance based on new openingBalance + existing transactions
+      final txs = _transactionsRepo.getTransactionsForAccount(id);
+      double balance = openingBalance;
+      for (final tx in txs) {
+        if (tx.type == TransactionType.income) {
+          balance += tx.amount;
+        } else {
+          balance -= tx.amount;
+        }
+      }
+
       final updated = await _accountsRepo.updateAccount(
         existing.copyWith(
           name: name,
           phone: phone,
           type: type,
+          openingBalance: openingBalance,
+          balance: balance,
           currency: currency,
           notes: notes,
         ),

@@ -1,9 +1,8 @@
-import 'package:finance_tracker_app_001/core/routing/routes.dart';
 import 'package:finance_tracker_app_001/features/home/logic/home_cubit.dart';
 import 'package:finance_tracker_app_001/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'financial_reports_dialog.dart';
 
 class HomeAppBar extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKey;
@@ -58,9 +57,13 @@ class _HomeAppBarState extends State<HomeAppBar> {
       title: Text(l10n.general),
       actions: [
         IconButton(
-          icon: const Icon(Icons.download_rounded),
+          icon: Image.asset(
+            'assets/icons/export_icon.png',
+            width: 24,
+            height: 24,
+          ),
           tooltip: l10n.exportData,
-          onPressed: () => context.push(AppRoutes.settings),
+          onPressed: () => FinancialReportsDialog.show(context),
         ),
         IconButton(
           icon: const Icon(Icons.search_rounded),

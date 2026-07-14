@@ -12,12 +12,14 @@ class AccountListItem extends StatelessWidget {
   final AccountModel account;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   const AccountListItem({
     super.key,
     required this.account,
     required this.onTap,
     required this.onDelete,
+    required this.onEdit,
   });
 
   @override
@@ -129,6 +131,18 @@ class AccountListItem extends StatelessWidget {
                     child: Icon(arrowIcon, color: typeColor, size: 14),
                   ),
                 ],
+              ),
+
+              const SizedBox(width: 8),
+
+              // ─── Edit Button ──────────────────────────────
+              IconButton(
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.iconPrimary,
+                  size: 20,
+                ),
+                onPressed: onEdit,
               ),
             ],
           ),

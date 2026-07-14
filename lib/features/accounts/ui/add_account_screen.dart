@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -23,7 +24,7 @@ class AddAccountScreen extends StatefulWidget {
 class _AddAccountScreenState extends State<AddAccountScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _amountCtrl = TextEditingController(text: '0');
+  final _amountCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
@@ -84,7 +85,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               title: Text(widget.account != null ? l10n.editAccount : l10n.addAccount),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded),
-                onPressed: () => context.pop(),
+                onPressed: () => Future.microtask(() {
+                  if (context.mounted) context.pop();
+                }),
               ),
             ),
             body: Form(
@@ -106,17 +109,19 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         ),
                         _divider(),
 
-                        if (widget.account == null) ...[
-                          // ─── Amount ───────────────────────────
-                          _buildField(
-                            controller: _amountCtrl,
-                            label: l10n.amount,
-                            icon: Icons.calculate_outlined,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                          ),
-                          _divider(),
-                        ],
+                        // ─── Amount ───────────────────────────
+                        _buildField(
+                          controller: _amountCtrl,
+                          label: l10n.amount,
+                          icon: Icons.calculate_outlined,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          hintText: '0',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
+                        ),
+                        _divider(),
 
                         // ─── Currency ─────────────────────────
                         _buildDropdown<String>(
@@ -225,6 +230,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
+    String? hintText,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -238,8 +245,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               keyboardType: keyboardType,
               maxLines: maxLines,
               validator: validator,
+              inputFormatters: inputFormatters,
               decoration: InputDecoration(
                 labelText: label,
+                hintText: hintText,
                 border: InputBorder.none,
                 filled: false,
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -377,6 +386,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   void _save(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
 
+    final amount =
+        double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0.0;
+
     if (widget.account != null) {
       context.read<AccountsCubit>().updateAccount(
             id: widget.account!.id,
@@ -385,15 +397,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 ? null
                 : _phoneCtrl.text.trim(),
             type: _selectedType,
+            openingBalance: amount,
             currency: _selectedCurrency,
             notes: _notesCtrl.text.trim().isEmpty
                 ? null
                 : _notesCtrl.text.trim(),
           );
     } else {
-      final amount =
-          double.tryParse(_amountCtrl.text.replaceAll(',', '')) ?? 0.0;
-
       context.read<AccountsCubit>().createAccount(
             name: _nameCtrl.text.trim(),
             phone: _phoneCtrl.text.trim().isEmpty

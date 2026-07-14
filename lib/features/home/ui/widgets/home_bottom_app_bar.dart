@@ -17,53 +17,58 @@ class HomeBottomAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          NavItem(
-            icon: Icons.home_rounded,
-            label: l10n.home,
-            isSelected: currentTab == 0,
-            onTap: () => onTabChanged(0),
-          ),
-          NavItem(
-            icon: Icons.currency_exchange_rounded,
-            label: l10n.currencies,
-            isSelected: currentTab == 1,
-            onTap: () {
-              onTabChanged(1);
-              context.push(AppRoutes.currencies).then((_) {
-                onTabChanged(0);
-              });
-            },
-          ),
-          const SizedBox(width: 48), // مساحة للـ FAB المُنحني
-          NavItem(
-            icon: Icons.bar_chart_rounded,
-            label: l10n.statistics,
-            isSelected: currentTab == 2,
-            onTap: () {
-              onTabChanged(2);
-              context.push(AppRoutes.statistics).then((_) {
-                onTabChanged(0);
-              });
-            },
-          ),
-          NavItem(
-            icon: Icons.settings_rounded,
-            label: l10n.settings,
-            isSelected: currentTab == 3,
-            onTap: () {
-              onTabChanged(3);
-              context.push(AppRoutes.settings).then((_) {
-                onTabChanged(0);
-              });
-            },
-          ),
-        ],
+    final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+
+    return IgnorePointer(
+      ignoring: !isCurrent,
+      child: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            NavItem(
+              icon: Icons.home_rounded,
+              label: l10n.home,
+              isSelected: currentTab == 0,
+              onTap: () => onTabChanged(0),
+            ),
+            NavItem(
+              icon: Icons.currency_exchange_rounded,
+              label: l10n.currencies,
+              isSelected: currentTab == 1,
+              onTap: () {
+                onTabChanged(1);
+                context.push(AppRoutes.currencies).then((_) {
+                  onTabChanged(0);
+                });
+              },
+            ),
+            const SizedBox(width: 48), // مساحة للـ FAB المُنحني
+            NavItem(
+              icon: Icons.bar_chart_rounded,
+              label: l10n.statistics,
+              isSelected: currentTab == 2,
+              onTap: () {
+                onTabChanged(2);
+                context.push(AppRoutes.statistics).then((_) {
+                  onTabChanged(0);
+                });
+              },
+            ),
+            NavItem(
+              icon: Icons.settings_rounded,
+              label: l10n.settings,
+              isSelected: currentTab == 3,
+              onTap: () {
+                onTabChanged(3);
+                context.push(AppRoutes.settings).then((_) {
+                  onTabChanged(0);
+                });
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

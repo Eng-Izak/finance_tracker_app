@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,7 @@ class AddTransactionScreen extends StatefulWidget {
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _amountCtrl = TextEditingController(text: '0');
+  final _amountCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   TransactionType _type = TransactionType.income;
   DateTime _date = DateTime.now();
@@ -78,7 +79,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded),
-                onPressed: () => context.pop(),
+                onPressed: () => Future.microtask(() {
+                  if (context.mounted) context.pop();
+                }),
               ),
               title: Text(widget.transaction != null ? l10n.editTransaction : l10n.addTransaction),
             ),
@@ -140,8 +143,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
                                             decimal: true),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                    ],
                                     decoration: InputDecoration(
                                       labelText: l10n.amount,
+                                      hintText: '0',
                                       border: InputBorder.none,
                                       filled: false,
                                       contentPadding:
