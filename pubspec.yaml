@@ -1,0 +1,80 @@
+name: finance_tracker_app_001
+description: "Finance Tracker - تطبيق إدارة مالية شخصية"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  flutter_bloc: ^9.0.0
+  bloc: ^9.0.0
+  equatable: ^2.0.5
+  uuid: ^4.3.3
+
+  # Dependency Injection
+  get_it: ^8.0.0
+
+  # Navigation
+  go_router: ^14.3.0
+
+  # Firebase
+  firebase_core: ^3.9.0
+  firebase_auth: ^5.4.0
+  cloud_firestore: ^5.6.0
+  google_sign_in: ^6.2.2
+
+  # Local Database (cross-platform: Android, iOS, Windows)
+  hive_flutter: ^1.1.0
+
+  # Network
+  dio: ^5.7.0
+  connectivity_plus: ^6.1.0
+
+  # Localization
+  intl: ^0.20.2
+  flutter_localizations:
+    sdk: flutter
+
+  # Charts
+  fl_chart: ^0.69.0
+
+  # PDF Export
+  pdf: ^3.11.0
+  printing: ^5.13.0
+
+  # CSV Export
+  csv: ^6.0.0
+
+  # File operations
+  path_provider: ^2.1.5
+  share_plus: ^10.1.0
+
+  # Notifications (local - reminder support)
+  flutter_local_notifications: ^18.0.0
+  timezone: ^0.9.4
+
+  # Security: Biometric + Secure Storage
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
+
+  # Image Picker (transaction attachments)
+  image_picker: ^1.1.2
+
+  # UI Utilities
+  shimmer: ^3.0.0
+  intl_phone_field: ^3.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true  # Enable l10n code generation
+  uses-material-design: true
