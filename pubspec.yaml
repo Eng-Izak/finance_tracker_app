@@ -70,6 +70,13 @@ dependencies:
   # UI Utilities
   shimmer: ^3.0.0
   intl_phone_field: ^3.2.0
+  
+  # الحزم المطلوبة للمصادقة والنسخ الاحتياطي
+  openid_client: ^0.4.8   
+  url_launcher: ^6.3.1    
+  archive: ^4.0.9         
+  http: ^1.2.2           
+  app_links: ^6.2.0       
 
 dev_dependencies:
   flutter_test:

@@ -12,16 +12,16 @@ class AuthCubit extends Cubit<AuthState> {
 
   // ─── Check Auth Status ───────────────────────────────────────
   Future<void> checkAuthStatus() async {
-    final user = _authRepository.currentUser;
+    await _authRepository.loadCachedUser();
+    final isGoogleLoggedIn = _authRepository.isLoggedIn;
     final isOffline =
         LocalDbService.getSetting<bool>("is_offline_user") ?? false;
 
-    if (user != null) {
+    if (isGoogleLoggedIn) {
       emit(AuthAuthenticated(
-        userId: user.uid,
-        displayName: user.displayName ?? 'User',
-        email: user.email ?? '',
-        photoUrl: user.photoURL,
+        userId: _authRepository.userId,
+        displayName: _authRepository.userDisplayName,
+        email: _authRepository.userEmail,
       ));
     } else if (isOffline) {
       emit(const AuthAuthenticated(
@@ -38,14 +38,13 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signInWithGoogle() async {
     emit(const AuthLoading());
     try {
-      final user = await _authRepository.signInWithGoogle();
-      if (user != null) {
+      final success = await _authRepository.signInWithGoogle();
+      if (success) {
         await LocalDbService.setSetting<bool>("is_offline_user", false);
         emit(AuthAuthenticated(
-          userId: user.uid,
-          displayName: user.displayName ?? 'User',
-          email: user.email ?? '',
-          photoUrl: user.photoURL,
+          userId: _authRepository.userId,
+          displayName: _authRepository.userDisplayName,
+          email: _authRepository.userEmail,
         ));
       } else {
         // User cancelled

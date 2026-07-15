@@ -14,6 +14,10 @@ import '../../features/statistics/logic/statistics_cubit.dart';
 import '../../features/settings/logic/settings_cubit.dart';
 import '../../features/currencies/logic/currencies_cubit.dart';
 import '../../features/security/logic/security_cubit.dart';
+import '../services/google_auth_service.dart';
+import '../services/database_archiver_service.dart';
+import '../services/google_drive_backup_service.dart';
+import '../../features/settings/logic/backup_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -24,6 +28,11 @@ Future<void> setupServiceLocator() async {
   sl.registerLazySingleton<ExportService>(() => ExportService());
   sl.registerLazySingleton<BiometricService>(() => BiometricService());
   sl.registerLazySingleton<ExchangeRateService>(() => ExchangeRateService());
+  sl.registerLazySingleton<GoogleAuthService>(() => GoogleAuthService());
+  sl.registerLazySingleton<DatabaseArchiverService>(() => DatabaseArchiverService());
+  sl.registerLazySingleton<GoogleDriveBackupService>(
+    () => GoogleDriveBackupService(authService: sl(), archiverService: sl()),
+  );
 
   // ─── Repositories ─────────────────────────────────────────────
   sl.registerLazySingleton<AccountsRepo>(
@@ -74,5 +83,8 @@ Future<void> setupServiceLocator() async {
   );
   sl.registerFactory<SecurityCubit>(
     () => SecurityCubit(biometricService: sl()),
+  );
+  sl.registerFactory<BackupCubit>(
+    () => BackupCubit(driveService: sl(), authService: sl()),
   );
 }

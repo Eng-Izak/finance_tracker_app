@@ -1,36 +1,35 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import '../../../../core/dependency_injection/service_locator.dart';
+import '../../../../core/services/google_auth_service.dart';
 
 class AuthRepository {
-  FirebaseAuth? get _auth =>
-      Firebase.apps.isNotEmpty ? FirebaseAuth.instance : null;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  String? _cachedEmail;
+  String? _cachedUserId;
+  String? _cachedDisplayName;
 
-  // ─── Current User ─────────────────────────────────────────────
-  User? get currentUser => _auth?.currentUser;
-  Stream<User?> get authStateChanges =>
-      _auth?.authStateChanges() ?? const Stream.empty();
-  bool get isLoggedIn => _auth?.currentUser != null;
+  // ─── Load Cached User from Storage ───────────────────────────
+  Future<void> loadCachedUser() async {
+    final googleAuth = sl<GoogleAuthService>();
+    final email = await googleAuth.getUserEmail();
+    if (email != null) {
+      _cachedEmail = email;
+      _cachedUserId = email;
+      _cachedDisplayName = email.split('@').first;
+    } else {
+      _cachedEmail = null;
+      _cachedUserId = null;
+      _cachedDisplayName = null;
+    }
+  }
 
   // ─── Google Sign In ──────────────────────────────────────────
-  Future<User?> signInWithGoogle() async {
-    final auth = _auth;
-    if (auth == null) {
-      throw Exception('Firebase is not configured. Google Sign-In is disabled.');
-    }
+  Future<bool> signInWithGoogle() async {
     try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // User cancelled
-
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await auth.signInWithCredential(credential);
-      return userCredential.user;
+      final googleAuth = sl<GoogleAuthService>();
+      final success = await googleAuth.signIn();
+      if (success) {
+        await loadCachedUser();
+      }
+      return success;
     } catch (e) {
       rethrow;
     }
@@ -38,20 +37,17 @@ class AuthRepository {
 
   // ─── Sign Out ────────────────────────────────────────────────
   Future<void> signOut() async {
-    final auth = _auth;
-    final futures = <Future<dynamic>>[
-      _googleSignIn.signOut(),
-    ];
-    if (auth != null) {
-      futures.add(auth.signOut());
-    }
-    await Future.wait(futures);
+    final googleAuth = sl<GoogleAuthService>();
+    await googleAuth.signOut();
+    _cachedEmail = null;
+    _cachedUserId = null;
+    _cachedDisplayName = null;
   }
 
-  // ─── User Info ───────────────────────────────────────────────
-  String get userId => _auth?.currentUser?.uid ?? 'local_user';
-  String get userDisplayName =>
-      _auth?.currentUser?.displayName ?? 'Local User';
-  String get userEmail => _auth?.currentUser?.email ?? 'local@example.com';
-  String? get userPhotoUrl => _auth?.currentUser?.photoURL;
+  // ─── Getters ─────────────────────────────────────────────────
+  bool get isLoggedIn => _cachedEmail != null;
+  String get userId => _cachedUserId ?? 'local_user';
+  String get userDisplayName => _cachedDisplayName ?? 'Local User';
+  String get userEmail => _cachedEmail ?? 'local@example.com';
+  String? get userPhotoUrl => null;
 }

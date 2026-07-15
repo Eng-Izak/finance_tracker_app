@@ -8,6 +8,7 @@ import '../core/services/local_db_service.dart';
 import '../core/utils/constants/app_constants.dart';
 import '../core/dependency_injection/service_locator.dart';
 import '../features/auth/logic/auth_cubit.dart';
+import '../features/settings/logic/backup_cubit.dart';
 
 class FinanceApp extends StatefulWidget {
   const FinanceApp({super.key});
@@ -75,8 +76,18 @@ class FinanceAppState extends State<FinanceApp> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<AuthCubit>(
-      create: (_) => AuthCubit(authRepository: sl())..checkAuthStatus(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(
+          create: (_) => AuthCubit(authRepository: sl())..checkAuthStatus(),
+        ),
+        BlocProvider<BackupCubit>(
+          create: (_) => BackupCubit(
+            driveService: sl(),
+            authService: sl(),
+          )..silentSignIn(),
+        ),
+      ],
       child: MaterialApp.router(
         title: 'Finance Tracker',
         debugShowCheckedModeBanner: false,
