@@ -254,7 +254,7 @@ class ExportService {
       children: [
         // Header Row
         pw.TableRow(
-          decoration: const pw.BoxDecoration(color: PdfColors.blue800),
+          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
           children: headers.map((h) {
             return pw.Padding(
               padding: const pw.EdgeInsets.all(6),
@@ -262,7 +262,7 @@ class ExportService {
                 alignment: pw.Alignment.center,
                 child: pw.Text(
                   h,
-                  style: pw.TextStyle(font: fontBold, color: PdfColors.white, fontSize: 10),
+                  style: pw.TextStyle(font: fontBold, color: PdfColor.fromHex('#2563EB'), fontSize: 10),
                   textDirection: pw.TextDirection.rtl,
                 ),
               ),
@@ -465,38 +465,83 @@ class ExportService {
                 title = 'التقرير المالي';
             }
 
-            children.add(
-              pw.Directionality(
-                textDirection: pw.TextDirection.rtl,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            if (reportType == 2) {
+              final singleAcc = accounts.length == 1 ? accounts.first : null;
+              final accName = singleAcc?.name ?? 'الحساب';
+              final accNotes = singleAcc?.notes;
+
+              children.add(
+                pw.Directionality(
+                  textDirection: pw.TextDirection.rtl,
+                  child: pw.Align(
+                    alignment: pw.Alignment.center,
+                    child: pw.Column(
                       children: [
                         pw.Text(
-                          title,
-                          style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                          'كشف حساب - $accName',
+                          style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 16,
+                            color: PdfColor.fromHex('#2563EB'),
+                          ),
                         ),
+                        if (accNotes != null && accNotes.isNotEmpty) ...[
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            accNotes,
+                            style: pw.TextStyle(
+                              font: fontBold,
+                              fontSize: 14,
+                              color: PdfColor.fromHex('#2563EB'),
+                            ),
+                          ),
+                        ],
+                        pw.SizedBox(height: 4),
+                        pw.Container(
+                          width: 250,
+                          height: 1.5,
+                          color: PdfColor.fromHex('#2563EB'),
+                        ),
+                        pw.SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              children.add(
+                pw.Directionality(
+                  textDirection: pw.TextDirection.rtl,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text(
+                            title,
+                            style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                          ),
+                          pw.Text(
+                            _toArabicNumbers('تاريخ التوليد: ${_dateFormat.format(DateTime.now())}', isArabic),
+                            style: const pw.TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                      if (startDate != null || endDate != null) ...[
+                        pw.SizedBox(height: 4),
                         pw.Text(
-                          _toArabicNumbers('تاريخ التوليد: ${_dateFormat.format(DateTime.now())}', isArabic),
+                          _toArabicNumbers('الفترة: ${startDate != null ? _dateFormat.format(startDate) : ""} إلى ${endDate != null ? _dateFormat.format(endDate) : ""}', isArabic),
                           style: const pw.TextStyle(fontSize: 10),
                         ),
                       ],
-                    ),
-                    if (startDate != null || endDate != null) ...[
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        _toArabicNumbers('الفترة: ${startDate != null ? _dateFormat.format(startDate) : ""} إلى ${endDate != null ? _dateFormat.format(endDate) : ""}', isArabic),
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
+                      pw.Divider(thickness: 2, color: PdfColors.blue300),
+                      pw.SizedBox(height: 16),
                     ],
-                    pw.Divider(thickness: 2, color: PdfColors.blue300),
-                    pw.SizedBox(height: 16),
-                  ],
+                  ),
                 ),
-              ),
-            );
+              );
+            }
 
             // Report Body
             if (reportType == 1) {
@@ -580,65 +625,129 @@ class ExportService {
               );
             } else if (reportType == 2) {
               // Detailed account statement
-              double runningBalance = 0;
-              // If single account, running balance can start with its openingBalance
               final singleAcc = accounts.length == 1 ? accounts.first : null;
-              if (singleAcc != null) {
-                runningBalance = singleAcc.openingBalance;
-              }
-
-              // Sort transactions chronologically to calculate running balance correctly
+              
+              // Sort transactions chronologically
               txs.sort((a, b) => a.date.compareTo(b.date));
 
-              final List<List<String>> tableData = [];
-              for (final tx in txs) {
-                final acc = accounts.firstWhere((a) => a.id == tx.accountId, orElse: () => accounts.first);
-                
-                double debit = 0;
-                double credit = 0;
-                if (tx.type == TransactionType.income) {
-                  credit = tx.amount;
-                  runningBalance += tx.amount;
-                } else {
-                  debit = tx.amount;
-                  runningBalance -= tx.amount;
-                }
+              // Compute running balance:
+              // Balance = Previous Balance + Debit (عليه) - Credit (له)
+              double runningBalance = singleAcc?.openingBalance ?? 0.0;
+              
+              final List<pw.TableRow> tableRows = [];
 
-                tableData.add([
-                  _toArabicNumbers(_dateFormat.format(tx.date), isArabic),
-                  '${acc.name}${tx.notes != null ? " - ${tx.notes}" : ""}',
-                  debit > 0 ? _toArabicNumbers(_currencyFormat.format(debit), isArabic) : '-',
-                  credit > 0 ? _toArabicNumbers(_currencyFormat.format(credit), isArabic) : '-',
-                  _toArabicNumbers(_currencyFormat.format(runningBalance), isArabic),
-                ]);
+              // 1. Header row
+              tableRows.add(
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey300,
+                  ),
+                  children: [
+                    _buildCell('الرصيد', fontBold, PdfColor.fromHex('#2563EB'), isHeader: true),
+                    _buildCell('له', fontBold, PdfColor.fromHex('#2563EB'), isHeader: true),
+                    _buildCell('عليه', fontBold, PdfColor.fromHex('#2563EB'), isHeader: true),
+                    _buildCell('التفاصيل', fontBold, PdfColor.fromHex('#2563EB'), isHeader: true, alignment: pw.Alignment.centerRight),
+                    _buildCell('التاريخ', fontBold, PdfColor.fromHex('#2563EB'), isHeader: true),
+                  ],
+                ),
+              );
+
+              // 2. Data rows
+              double totalDebit = 0.0;
+              double totalCredit = 0.0;
+
+              for (final tx in txs) {
+                final double debit = tx.type == TransactionType.expense ? tx.amount : 0.0;
+                final double credit = tx.type == TransactionType.income ? tx.amount : 0.0;
+
+                totalDebit += debit;
+                totalCredit += credit;
+                runningBalance = runningBalance + debit - credit;
+
+                final String dateStr = _formatDate(tx.date, isArabic);
+                final String detailsStr = tx.notes ?? '-';
+                final String debitStr = _formatAmount(debit, isArabic);
+                final String creditStr = _formatAmount(credit, isArabic);
+                final String balanceStr = _formatAmount(runningBalance, isArabic);
+
+                final PdfColor balanceColor = runningBalance < 0 
+                    ? PdfColor.fromHex('#16A34A') // green
+                    : (runningBalance > 0 ? PdfColor.fromHex('#EA580C') : PdfColors.black);
+
+                tableRows.add(
+                  pw.TableRow(
+                    children: [
+                      // الرصيد
+                      _buildCell(balanceStr, fontBold, balanceColor, isBold: true),
+                      // له
+                      _buildCell(creditStr, fontRegular, PdfColors.black),
+                      // عليه
+                      _buildCell(debitStr, fontRegular, PdfColors.black),
+                      // التفاصيل
+                      _buildCell(detailsStr, fontRegular, PdfColors.black, alignment: pw.Alignment.centerRight),
+                      // التاريخ
+                      _buildCell(dateStr, fontRegular, PdfColors.black),
+                    ],
+                  ),
+                );
               }
+
+              // 3. Row 3: إجمالي العمليات
+              final String totalDebitStr = _formatAmount(totalDebit, isArabic);
+              final String totalCreditStr = _formatAmount(totalCredit, isArabic);
+
+              tableRows.add(
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey200,
+                  ),
+                  children: [
+                    _buildCell('', fontBold, PdfColors.black),
+                    _buildCell(totalCreditStr, fontBold, PdfColor.fromHex('#16A34A'), isBold: true),
+                    _buildCell(totalDebitStr, fontBold, PdfColor.fromHex('#EA580C'), isBold: true),
+                    _buildCell('إجمالي العمليات', fontBold, PdfColor.fromHex('#2563EB'), alignment: pw.Alignment.centerRight, isBold: true),
+                    _buildCell('', fontBold, PdfColors.black),
+                  ],
+                ),
+              );
+
+              // 4. Row 4: الرصيد الإجمالي
+              final double netTotal = totalDebit - totalCredit;
+              final bool isDebtor = netTotal >= 0;
+              final String netLabel = isDebtor ? 'الرصيد الإجمالي - عليه' : 'الرصيد الإجمالي - له';
+              
+              final PdfColor netBgColor = isDebtor 
+                  ? PdfColor.fromHex('#FCA5A5') // light red
+                  : PdfColor.fromHex('#86EFAC'); // light green
+
+              final String currencyStr = singleAcc?.currency == 'LOCAL' ? 'محلي' : (singleAcc?.currency ?? '');
+              final String netValueStr = '${_formatAmount(netTotal.abs(), isArabic)} $currencyStr';
+
+              tableRows.add(
+                pw.TableRow(
+                  children: [
+                    _buildCell('', fontBold, PdfColors.black, customBgColor: netBgColor),
+                    _buildCell(netValueStr, fontBold, PdfColors.black, isBold: true, customBgColor: netBgColor),
+                    _buildCell('', fontBold, PdfColors.black, customBgColor: netBgColor),
+                    _buildCell(netLabel, fontBold, PdfColor.fromHex('#2563EB'), alignment: pw.Alignment.centerRight, isBold: true),
+                    _buildCell('', fontBold, PdfColors.black),
+                  ],
+                ),
+              );
 
               children.add(
                 pw.Directionality(
                   textDirection: pw.TextDirection.rtl,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      if (singleAcc != null) ...[
-                        pw.Text('تفاصيل الحساب:', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                        pw.Text('اسم الحساب: ${singleAcc.name} | الجوال: ${singleAcc.phone ?? "-"}'),
-                        pw.Text('الرصيد الافتتاحي: ${_toArabicNumbers(_currencyFormat.format(singleAcc.openingBalance), isArabic)} | الرصيد الحالي: ${_toArabicNumbers(_currencyFormat.format(singleAcc.balance), isArabic)}'),
-                        pw.SizedBox(height: 12),
-                      ],
-                      _buildRtlTable(
-                        headers: ['التاريخ', 'التفاصيل / الحساب', 'عليه (خصم)', 'له (إيداع)', 'الرصيد التراكمي'],
-                        data: tableData,
-                        fontRegular: fontRegular,
-                        fontBold: fontBold,
-                        alignments: {
-                          0: pw.Alignment.center,
-                          1: pw.Alignment.centerLeft,
-                          2: pw.Alignment.centerRight,
-                          3: pw.Alignment.centerRight,
-                          4: pw.Alignment.centerRight,
-                        },
-                      ),
-                    ],
+                  child: pw.Table(
+                    border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+                    columnWidths: const {
+                      0: pw.FixedColumnWidth(85),
+                      1: pw.FixedColumnWidth(65),
+                      2: pw.FixedColumnWidth(65),
+                      3: pw.FlexColumnWidth(),
+                      4: pw.FixedColumnWidth(85),
+                    },
+                    children: tableRows,
                   ),
                 ),
               );
@@ -1039,5 +1148,41 @@ class ExportService {
       debugPrint('Error generating CSV report: $e');
       return null;
     }
+  }
+
+  String _formatDate(DateTime date, bool isArabic) {
+    return _toArabicNumbers(_dateFormat.format(date), isArabic);
+  }
+
+  String _formatAmount(double amount, bool isArabic) {
+    final hasDecimal = amount % 1 != 0;
+    final format = hasDecimal ? NumberFormat('#,##0.00') : NumberFormat('#,##0');
+    return _toArabicNumbers(format.format(amount), isArabic);
+  }
+
+  pw.Widget _buildCell(
+    String text,
+    pw.Font font,
+    PdfColor textColor, {
+    bool isHeader = false,
+    bool isBold = false,
+    pw.Alignment alignment = pw.Alignment.center,
+    PdfColor? customBgColor,
+  }) {
+    return pw.Container(
+      alignment: alignment,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: customBgColor != null ? pw.BoxDecoration(color: customBgColor) : null,
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          font: font,
+          fontSize: isHeader ? 10 : 9,
+          fontWeight: (isBold || isHeader) ? pw.FontWeight.bold : pw.FontWeight.normal,
+          color: textColor,
+        ),
+        textDirection: pw.TextDirection.rtl,
+      ),
+    );
   }
 }

@@ -66,10 +66,15 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: Colors.white,
-                            size: 60,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(30),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Image.asset(
+                                'assets/icons/app_icon.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                         ),
 

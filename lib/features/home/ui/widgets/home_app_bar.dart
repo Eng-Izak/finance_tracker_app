@@ -191,6 +191,7 @@ class _HomeAppBarState extends State<HomeAppBar> {
       ),
     );
     if (confirmed != true) return;
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
@@ -398,13 +399,14 @@ class _HomeAppBarState extends State<HomeAppBar> {
   }
 
   void _showGDriveDialog() {
+    final homeCubit = context.read<HomeCubit>();
     showDialog(
       context: context,
       builder: (dialogContext) {
         return BlocConsumer<BackupCubit, BackupState>(
-          listener: (context, state) {
+          listener: (blocContext, state) {
             if (state is BackupSyncSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.of(blocContext).showSnackBar(
                 SnackBar(
                   content: const Text(
                     'تمت عملية المزامنة بنجاح!',
@@ -417,6 +419,7 @@ class _HomeAppBarState extends State<HomeAppBar> {
                   ),
                 ),
               );
+              homeCubit.refresh();
               Navigator.pop(dialogContext);
             }
           },

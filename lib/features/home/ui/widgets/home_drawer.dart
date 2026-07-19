@@ -173,7 +173,7 @@ class HomeDrawer extends StatelessWidget {
           );
           // Refresh the home screen data after restore
           if (context.mounted) {
-            context.read<HomeCubit>().loadAccounts();
+            context.read<HomeCubit>().refresh();
           }
         }
       } catch (e) {
