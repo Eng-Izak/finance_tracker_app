@@ -859,6 +859,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lowest Amount'**
   String get lowestAmount;
+
+  /// No description provided for @saveDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Database'**
+  String get saveDatabase;
+
+  /// No description provided for @restoreDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Database'**
+  String get restoreDatabase;
+
+  /// No description provided for @databaseBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Database Backup'**
+  String get databaseBackup;
+
+  /// No description provided for @saveDatabaseSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Database saved successfully'**
+  String get saveDatabaseSuccess;
+
+  /// No description provided for @restoreDatabaseSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Database restored successfully'**
+  String get restoreDatabaseSuccess;
+
+  /// No description provided for @restoreDatabaseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to restore this database? Current data will be replaced.'**
+  String get restoreDatabaseConfirm;
+
+  /// No description provided for @noDatabaseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'No database files found to back up.'**
+  String get noDatabaseFiles;
 }
 
 class _AppLocalizationsDelegate

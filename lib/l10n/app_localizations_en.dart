@@ -390,4 +390,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lowestAmount => 'Lowest Amount';
+
+  @override
+  String get saveDatabase => 'Save Database';
+
+  @override
+  String get restoreDatabase => 'Restore Database';
+
+  @override
+  String get databaseBackup => 'Database Backup';
+
+  @override
+  String get saveDatabaseSuccess => 'Database saved successfully';
+
+  @override
+  String get restoreDatabaseSuccess => 'Database restored successfully';
+
+  @override
+  String get restoreDatabaseConfirm =>
+      'Are you sure you want to restore this database? Current data will be replaced.';
+
+  @override
+  String get noDatabaseFiles => 'No database files found to back up.';
 }

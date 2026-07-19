@@ -1,8 +1,11 @@
+import 'dart:io';
+import 'package:finance_tracker_app_001/core/services/local_db_backup_service.dart';
 import 'package:finance_tracker_app_001/features/home/logic/home_cubit.dart';
 import 'package:finance_tracker_app_001/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/routing/routes.dart';
 import '../../../../core/theming/app_colors.dart';
@@ -35,30 +38,18 @@ class _HomeAppBarState extends State<HomeAppBar> {
         context.push(AppRoutes.settings);
         break;
       case 'local_backup_restore':
-        _showFeatureDialog(
-          title: 'نسخ احتياطي محلي',
-          message: 'تم حفظ نسخة احتياطية محلية لقاعدة البيانات بنجاح على ذاكرة الجهاز الداخلية.',
-          icon: Icons.storage_rounded,
-          color: Colors.green,
-        );
+        _showLocalBackupRestoreDialog(context);
         break;
       case 'gdrive_backup_restore':
       case 'gdrive_sync':
         _showGDriveDialog();
         break;
       case 'send_database':
-        _showFeatureDialog(
-          title: 'إرسال قاعدة البيانات',
-          message: 'هل تريد مشاركة وإرسال نسخة احتياطية من قاعدة البيانات الحالية؟',
-          icon: Icons.share_rounded,
-          color: Colors.blue,
-          onConfirm: () {
-            Share.share('نسخة قاعدة بيانات تطبيق فيت تراك المالية المحدثة.');
-          },
-        );
+        _handleSendDatabase(context);
         break;
       case 'share_app':
-        Share.share('قم بتحميل تطبيق فيت تراك لإدارة وتتبع مصاريفك وحساباتك المالية بكل سهولة!');
+        Share.share(
+            'قم بتحميل تطبيق فيت تراك لإدارة وتتبع مصاريفك وحساباتك المالية بكل سهولة!');
         break;
       case 'rate_app':
         _showRatingDialog();
@@ -66,7 +57,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
       case 'our_apps':
         _showFeatureDialog(
           title: 'تطبيقاتنا على المتجر',
-          message: 'تفضل بزيارة صفحتنا على متجر التطبيقات لمشاهدة جميع برامجنا وأدواتنا المفيدة.',
+          message:
+              'تفضل بزيارة صفحتنا على متجر التطبيقات لمشاهدة جميع برامجنا وأدواتنا المفيدة.',
           icon: Icons.store_mall_directory_rounded,
           color: Colors.purple,
         );
@@ -74,6 +66,206 @@ class _HomeAppBarState extends State<HomeAppBar> {
       case 'privacy_policy':
         _showPrivacyPolicyDialog();
         break;
+    }
+  }
+
+  void _showLocalBackupRestoreDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.storage_rounded, color: AppColors.primary, size: 28),
+            SizedBox(width: 10),
+            Text('حفظ واسترجاع البيانات',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'اختر إحدى العمليات التالية لإدارة نسخ قاعدة البيانات الاحتياطية على جهازك.',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleExportDatabase(context);
+            },
+            icon: const Icon(Icons.save_alt_rounded, size: 18),
+            label: const Text('تصدير قاعدة البيانات'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleImportDatabase(context);
+            },
+            icon: const Icon(Icons.restore_rounded, size: 18),
+            label: const Text('استيراد واستعادة'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleExportDatabase(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final success = await LocalDbBackupService.saveDatabase();
+      if (context.mounted) Navigator.pop(context);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حفظ قاعدة البيانات بنجاح.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $e'),
+            backgroundColor: AppColors.debtor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleImportDatabase(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text('تأكيد الاستعادة',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'تحذير: سيتم استبدال جميع بيانات التطبيق الحالية بالبيانات المستعادة. لا يمكن التراجع عن هذا الإجراء. هل أنت متأكد من المتابعة؟',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.debtor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('موافق (استبدال)'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final success = await LocalDbBackupService.restoreDatabase();
+      if (context.mounted) Navigator.pop(context);
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم استعادة قاعدة البيانات بنجاح.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        if (context.mounted) {
+          context.read<HomeCubit>().refresh();
+        }
+      }
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $e'),
+            backgroundColor: AppColors.debtor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSendDatabase(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final archiveBytes = await LocalDbBackupService.getArchiveBytes();
+      if (context.mounted) Navigator.pop(context);
+
+      if (archiveBytes == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('لا توجد ملفات قاعدة بيانات للمشاركة.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Write to a temporary file
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/finance_tracker_backup.db');
+      await tempFile.writeAsBytes(archiveBytes, flush: true);
+
+      // Share the file
+      await Share.shareXFiles(
+        [XFile(tempFile.path)],
+        text: 'نسخة احتياطية لقاعدة بيانات تطبيق فيت تراك المالية.',
+      );
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $e'),
+            backgroundColor: AppColors.debtor,
+          ),
+        );
+      }
     }
   }
 
@@ -109,7 +301,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               child: const Text('موافق', style: TextStyle(color: Colors.white)),
             ),
@@ -126,7 +319,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
       context: context,
       builder: (nameDialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('تسمية النسخة الاحتياطية', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('تسمية النسخة الاحتياطية',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: textController,
           decoration: const InputDecoration(
@@ -152,7 +346,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('رفع'),
           ),
@@ -161,7 +356,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
     );
   }
 
-  void _showConfirmRestoreDialog(BuildContext context, String backupName, VoidCallback onConfirm) {
+  void _showConfirmRestoreDialog(
+      BuildContext context, String backupName, VoidCallback onConfirm) {
     showDialog(
       context: context,
       builder: (confirmContext) => AlertDialog(
@@ -170,7 +366,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
             SizedBox(width: 10),
-            Text('تأكيد الاستعادة', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('تأكيد الاستعادة',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
@@ -190,7 +387,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.debtor,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('موافق (استبدال)'),
           ),
@@ -224,15 +422,16 @@ class _HomeAppBarState extends State<HomeAppBar> {
           },
           builder: (context, state) {
             final backupCubit = context.read<BackupCubit>();
-            
+
             Widget content;
             List<Widget> actions = [];
-            
+
             if (state is BackupInitial) {
               content = Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cloud_off_rounded, size: 64, color: AppColors.iconSecondary),
+                  const Icon(Icons.cloud_off_rounded,
+                      size: 64, color: AppColors.iconSecondary),
                   const SizedBox(height: 16),
                   const Text(
                     'يرجى مصادقة حساب جوجل (Gmail) للتمكن من حفظ واستعادة بياناتك سحابياً على Google Drive الخاص بك.',
@@ -244,7 +443,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
               actions = [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                  child:
+                      const Text('إلغاء', style: TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => backupCubit.signInWithGoogle(),
@@ -253,7 +453,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ];
@@ -270,21 +471,25 @@ class _HomeAppBarState extends State<HomeAppBar> {
                   ),
                 ],
               );
-            } else if (state is BackupAuthenticationSuccess || state is BackupSyncSuccess) {
-              final email = state is BackupAuthenticationSuccess 
-                  ? state.userEmail 
+            } else if (state is BackupAuthenticationSuccess ||
+                state is BackupSyncSuccess) {
+              final email = state is BackupAuthenticationSuccess
+                  ? state.userEmail
                   : (state as BackupSyncSuccess).userEmail;
-                  
-              final lastSync = state is BackupSyncSuccess ? state.lastSyncedAt : null;
-              
+
+              final lastSync =
+                  state is BackupSyncSuccess ? state.lastSyncedAt : null;
+
               content = Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cloud_done_rounded, size: 64, color: Colors.green),
+                  const Icon(Icons.cloud_done_rounded,
+                      size: 64, color: Colors.green),
                   const SizedBox(height: 16),
                   Text(
                     'متصل بـ: $email',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   if (lastSync != null) ...[
@@ -301,44 +506,52 @@ class _HomeAppBarState extends State<HomeAppBar> {
                     alignment: WrapAlignment.center,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => _showUploadNameDialog(dialogContext, backupCubit),
+                        onPressed: () =>
+                            _showUploadNameDialog(dialogContext, backupCubit),
                         icon: const Icon(Icons.cloud_upload_rounded, size: 18),
-                        label: const Text('رفع نسخة سحابية', style: TextStyle(fontSize: 12)),
+                        label: const Text('رفع نسخة سحابية',
+                            style: TextStyle(fontSize: 12)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green, 
+                          backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                       ElevatedButton.icon(
                         onPressed: () => backupCubit.loadBackupsList(),
-                        icon: const Icon(Icons.cloud_download_rounded, size: 18),
-                        label: const Text('استعادة النسخة', style: TextStyle(fontSize: 12)),
+                        icon:
+                            const Icon(Icons.cloud_download_rounded, size: 18),
+                        label: const Text('استعادة النسخة',
+                            style: TextStyle(fontSize: 12)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary, 
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ],
                   ),
                 ],
               );
-              
+
               actions = [
                 TextButton(
                   onPressed: () => backupCubit.signOut(),
-                  child: const Text('تسجيل الخروج', style: TextStyle(color: AppColors.debtor)),
+                  child: const Text('تسجيل الخروج',
+                      style: TextStyle(color: AppColors.debtor)),
                 ),
                 const SizedBox(width: 40),
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('إغلاق', style: TextStyle(color: Colors.grey)),
+                  child:
+                      const Text('إغلاق', style: TextStyle(color: Colors.grey)),
                 ),
               ];
             } else if (state is BackupListLoaded) {
               final backups = state.backups;
-              
+
               content = SizedBox(
                 width: double.maxFinite,
                 height: 250,
@@ -361,42 +574,51 @@ class _HomeAppBarState extends State<HomeAppBar> {
                           String formattedTime = '';
                           if (rawTime != null) {
                             try {
-                              final parsedTime = DateTime.parse(rawTime).toLocal();
-                              formattedTime = DateFormat('yyyy-MM-dd HH:mm').format(parsedTime);
+                              final parsedTime =
+                                  DateTime.parse(rawTime).toLocal();
+                              formattedTime = DateFormat('yyyy-MM-dd HH:mm')
+                                  .format(parsedTime);
                             } catch (_) {
                               formattedTime = rawTime;
                             }
                           }
-                          
+
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
                               name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
-                              formattedTime.isNotEmpty ? formattedTime : 'غير محدد',
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              formattedTime.isNotEmpty
+                                  ? formattedTime
+                                  : 'غير محدد',
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 11),
                             ),
                             trailing: ElevatedButton(
                               onPressed: () {
-                                _showConfirmRestoreDialog(dialogContext, name, () {
+                                _showConfirmRestoreDialog(dialogContext, name,
+                                    () {
                                   backupCubit.downloadBackup(id);
                                 });
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Text('استعادة', style: TextStyle(fontSize: 11)),
+                              child: const Text('استعادة',
+                                  style: TextStyle(fontSize: 11)),
                             ),
                           );
                         },
@@ -406,44 +628,52 @@ class _HomeAppBarState extends State<HomeAppBar> {
               actions = [
                 TextButton(
                   onPressed: () => backupCubit.resetToAuthenticated(),
-                  child: const Text('رجوع', style: TextStyle(color: AppColors.primary)),
+                  child: const Text('رجوع',
+                      style: TextStyle(color: AppColors.primary)),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('إغلاق', style: TextStyle(color: Colors.grey)),
+                  child:
+                      const Text('إغلاق', style: TextStyle(color: Colors.grey)),
                 ),
               ];
             } else if (state is BackupFailure) {
               content = Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.debtor),
+                  const Icon(Icons.error_outline_rounded,
+                      size: 64, color: AppColors.debtor),
                   const SizedBox(height: 16),
                   Text(
                     state.errorMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.debtor, fontSize: 14, height: 1.5),
+                    style: const TextStyle(
+                        color: AppColors.debtor, fontSize: 14, height: 1.5),
                   ),
                 ],
               );
-              
+
               actions = [
                 TextButton(
                   onPressed: () => backupCubit.silentSignIn(),
-                  child: const Text('إعادة المحاولة', style: TextStyle(color: AppColors.primary)),
+                  child: const Text('إعادة المحاولة',
+                      style: TextStyle(color: AppColors.primary)),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('إغلاق', style: TextStyle(color: Colors.grey)),
+                  child:
+                      const Text('إغلاق', style: TextStyle(color: Colors.grey)),
                 ),
               ];
             } else {
               content = const SizedBox.shrink();
             }
-            
+
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('النسخ الاحتياطي سحابياً', style: TextStyle(fontWeight: FontWeight.bold)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: const Text('النسخ الاحتياطي سحابياً',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               content: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: content,
@@ -462,14 +692,17 @@ class _HomeAppBarState extends State<HomeAppBar> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Center(
-            child: Text('تقييم التطبيق', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('تقييم التطبيق',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('ما هو تقييمك لتجربتك مع تطبيق فيت تراك؟', textAlign: TextAlign.center, style: TextStyle(fontSize: 14)),
+              const Text('ما هو تقييمك لتجربتك مع تطبيق فيت تراك؟',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 14)),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -477,7 +710,9 @@ class _HomeAppBarState extends State<HomeAppBar> {
                   final starIndex = index + 1;
                   return IconButton(
                     icon: Icon(
-                      starIndex <= selectedStars ? Icons.star_rounded : Icons.star_outline_rounded,
+                      starIndex <= selectedStars
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
                       color: Colors.amber,
                       size: 36,
                     ),
@@ -503,16 +738,19 @@ class _HomeAppBarState extends State<HomeAppBar> {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('شكراً لتقييمك الرائع! نعمل دائماً لتقديم أفضل تجربة.'),
+                          content: Text(
+                              'شكراً لتقييمك الرائع! نعمل دائماً لتقديم أفضل تجربة.'),
                           backgroundColor: Colors.green,
                         ),
                       );
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              child: const Text('إرسال التقييم', style: TextStyle(color: Colors.white)),
+              child: const Text('إرسال التقييم',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -529,7 +767,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
           children: [
             Icon(Icons.privacy_tip_rounded, color: AppColors.primary, size: 28),
             SizedBox(width: 10),
-            Text('سياسة الخصوصية', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('سياسة الخصوصية',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: const SingleChildScrollView(
@@ -558,7 +797,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('موافق', style: TextStyle(color: Colors.white)),
           ),
@@ -722,5 +962,3 @@ class _HomeAppBarState extends State<HomeAppBar> {
     );
   }
 }
-
-

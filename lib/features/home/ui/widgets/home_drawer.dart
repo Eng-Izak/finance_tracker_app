@@ -1,8 +1,10 @@
+import 'package:finance_tracker_app_001/core/services/local_db_backup_service.dart';
 import 'package:finance_tracker_app_001/core/routing/routes.dart';
 import 'package:finance_tracker_app_001/core/theming/app_colors.dart';
 import 'package:finance_tracker_app_001/core/theming/app_text_styles.dart';
 import 'package:finance_tracker_app_001/features/auth/logic/auth_cubit.dart';
 import 'package:finance_tracker_app_001/features/auth/logic/auth_state.dart';
+import 'package:finance_tracker_app_001/features/home/logic/home_cubit.dart';
 import 'package:finance_tracker_app_001/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -84,6 +86,19 @@ class HomeDrawer extends StatelessWidget {
               context.push(AppRoutes.settings);
             },
           ),
+          const Divider(),
+          ListTile(
+            leading:
+                const Icon(Icons.save_alt_rounded, color: AppColors.primary),
+            title: Text(l10n.saveDatabase),
+            onTap: () => _handleSaveDatabase(context, l10n),
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.restore_rounded, color: AppColors.primary),
+            title: Text(l10n.restoreDatabase),
+            onTap: () => _handleRestoreDatabase(context, l10n),
+          ),
           const Spacer(),
           const Divider(),
           ListTile(
@@ -100,9 +115,83 @@ class HomeDrawer extends StatelessWidget {
     );
   }
 
+  Future<void> _handleSaveDatabase(
+      BuildContext context, AppLocalizations l10n) async {
+    Navigator.pop(context); // Close drawer first
+    try {
+      final success = await LocalDbBackupService.saveDatabase();
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.saveDatabaseSuccess),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${l10n.error}: $e'),
+            backgroundColor: AppColors.debtor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleRestoreDatabase(
+      BuildContext context, AppLocalizations l10n) async {
+    Navigator.pop(context); // Close drawer first
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.restoreDatabase),
+        content: Text(l10n.restoreDatabaseConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.debtor),
+            child: Text(l10n.restoreDatabase),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      try {
+        final success = await LocalDbBackupService.restoreDatabase();
+        if (success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.restoreDatabaseSuccess),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Refresh the home screen data after restore
+          if (context.mounted) {
+            context.read<HomeCubit>().loadAccounts();
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${l10n.error}: $e'),
+              backgroundColor: AppColors.debtor,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _handleSignOut(
       BuildContext context, AppLocalizations l10n) async {
-    Navigator.pop(context); // إغلاق الـ Drawer أولاً
+    Navigator.pop(context); // Close drawer first
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

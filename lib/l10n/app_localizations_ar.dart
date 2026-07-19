@@ -389,4 +389,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get lowestAmount => 'أقل مبلغ';
+
+  @override
+  String get saveDatabase => 'حفظ قاعدة البيانات';
+
+  @override
+  String get restoreDatabase => 'استعادة قاعدة البيانات';
+
+  @override
+  String get databaseBackup => 'نسخ احتياطي لقاعدة البيانات';
+
+  @override
+  String get saveDatabaseSuccess => 'تم حفظ قاعدة البيانات بنجاح';
+
+  @override
+  String get restoreDatabaseSuccess => 'تم استعادة قاعدة البيانات بنجاح';
+
+  @override
+  String get restoreDatabaseConfirm =>
+      'هل أنت متأكد من استعادة قاعدة البيانات هذه؟ سيتم استبدال البيانات الحالية.';
+
+  @override
+  String get noDatabaseFiles =>
+      'لم يتم العثور على ملفات قاعدة بيانات للنسخ الاحتياطي.';
 }
