@@ -12,7 +12,12 @@
           "package_name": "com.example.finance_tracker_app_001"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "713851835067-7cpc42fjv5cnu9adqcajcqc2bretuaiv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD3ZxC0wKr7L-DKbvr1CDn4qiK9cMFGnog"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "713851835067-7cpc42fjv5cnu9adqcajcqc2bretuaiv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

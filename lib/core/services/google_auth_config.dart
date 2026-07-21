@@ -8,10 +8,10 @@ import 'dart:io';
 ///   Android → Uses Native Android Client (clientId only)
 ///             via google_sign_in (Google Play Services + SHA-1).
 ///
-/// Credentials can be injected at compile time via --dart-define:
-///   flutter run --dart-define=GOOGLE_CLIENT_ID_WINDOWS=xxx
-///   flutter run --dart-define=GOOGLE_CLIENT_SECRET_WINDOWS=xxx
-///   flutter run --dart-define=GOOGLE_CLIENT_ID_ANDROID=xxx
+/// Credentials MUST be injected at compile time via --dart-define:
+///   flutter run --dart-define=GOOGLE_CLIENT_ID_WINDOWS=xxx \
+///               --dart-define=GOOGLE_CLIENT_SECRET_WINDOWS=xxx \
+///               --dart-define=GOOGLE_CLIENT_ID_ANDROID=xxx
 class GoogleAuthConfig {
   GoogleAuthConfig._();
 
@@ -25,32 +25,19 @@ class GoogleAuthConfig {
   // ═══════════════════════════════════════════════════════════════
 
   /// Windows OAuth2 Client ID (Web Application type in Google Cloud Console).
-  static const String windowsClientId = String.fromEnvironment(
-    _winClientIdKey,
-    defaultValue:
-        '743197645224-0s8t246cgauhn7v7ifv6ml3qmn1g1sur.apps.googleusercontent.com',
-  );
+  static const String windowsClientId = String.fromEnvironment(_winClientIdKey);
 
   /// Windows OAuth2 Client Secret (Web Application type in Google Cloud Console).
-  /// CRITICAL: This must NEVER be an empty string when used on Windows.
-  /// Google's token endpoint rejects requests without a valid client_secret
-  /// for Desktop/Web Application type clients.
-  static const String windowsClientSecret = String.fromEnvironment(
-    _winClientSecretKey,
-    defaultValue: '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',
-  );
+  static const String windowsClientSecret =
+      String.fromEnvironment(_winClientSecretKey);
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Android: Native Application Credentials ──────────────────
   // ═══════════════════════════════════════════════════════════════
 
   /// Android OAuth2 Client ID (Android type in Google Cloud Console).
-  /// Identity is verified via package name + SHA-1 fingerprint.
-  static const String androidClientId = String.fromEnvironment(
-    _androidClientIdKey,
-    defaultValue:
-        '743197645224-skhvumql647s37fo2bk0a5verbi2mt3e.apps.googleusercontent.com',
-  );
+  static const String androidClientId =
+      String.fromEnvironment(_androidClientIdKey);
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Platform-Resolved Getters ────────────────────────────────
@@ -58,8 +45,24 @@ class GoogleAuthConfig {
 
   /// Resolves the correct Client ID based on the active platform.
   static String get clientId {
-    if (Platform.isWindows) return windowsClientId;
-    if (Platform.isAndroid) return androidClientId;
+    if (Platform.isWindows) {
+      if (windowsClientId.isEmpty) {
+        throw StateError(
+          'GOOGLE_CLIENT_ID_WINDOWS is missing. '
+          'Inject via: --dart-define=GOOGLE_CLIENT_ID_WINDOWS=YOUR_CLIENT_ID',
+        );
+      }
+      return windowsClientId;
+    }
+    if (Platform.isAndroid) {
+      if (androidClientId.isEmpty) {
+        throw StateError(
+          'GOOGLE_CLIENT_ID_ANDROID is missing. '
+          'Inject via: --dart-define=GOOGLE_CLIENT_ID_ANDROID=YOUR_CLIENT_ID',
+        );
+      }
+      return androidClientId;
+    }
     throw UnsupportedError(
       'Unsupported platform for Google OAuth2 Authentication.',
     );
@@ -67,11 +70,8 @@ class GoogleAuthConfig {
 
   /// Resolves the Client Secret for Windows.
   /// Returns null on Android (secret-less SHA-1 based auth).
-  /// Throws [StateError] on Windows if the secret is empty/missing.
   static String? get clientSecret {
     if (Platform.isAndroid) {
-      // Android uses signature-based (SHA-1) identity verification.
-      // No client secret is required or allowed.
       return null;
     }
     if (Platform.isWindows) {
@@ -90,7 +90,13 @@ class GoogleAuthConfig {
   }
 
   /// The Web Client ID used as serverClientId for google_sign_in on Android.
-  /// Google Play Services needs this to issue access tokens with
-  /// the requested API scopes (e.g. Drive appdata).
-  static String get serverClientId => windowsClientId;
+  static String get serverClientId {
+    if (windowsClientId.isEmpty) {
+      throw StateError(
+        'GOOGLE_CLIENT_ID_WINDOWS is required as serverClientId on Android. '
+        'Inject via: --dart-define=GOOGLE_CLIENT_ID_WINDOWS=YOUR_WEB_CLIENT_ID',
+      );
+    }
+    return windowsClientId;
+  }
 }
